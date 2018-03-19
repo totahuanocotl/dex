@@ -71,6 +71,17 @@ func dirExists(dir string) error {
 	return nil
 }
 
+func isFile(path string) (bool, error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, fmt.Errorf("path %q does not exist", path)
+		}
+		return false, fmt.Errorf("stat path %q: %v", path, err)
+	}
+	return !stat.IsDir(), nil
+}
+
 // loadWebConfig returns static assets, theme assets, and templates used by the frontend by
 // reading the directory specified in the webConfig.
 //
@@ -126,10 +137,14 @@ func loadTemplates(c webConfig, templatesDir string) (*templates, error) {
 
 	filenames := []string{}
 	for _, file := range files {
-		if file.IsDir() {
-			continue
+		fp := filepath.Join(templatesDir, file.Name())
+		ok, err := isFile(fp)
+		if err != nil {
+			return nil, err
 		}
-		filenames = append(filenames, filepath.Join(templatesDir, file.Name()))
+		if ok {
+			filenames = append(filenames, fp)
+		}
 	}
 	if len(filenames) == 0 {
 		return nil, fmt.Errorf("no files in template dir %q", templatesDir)
